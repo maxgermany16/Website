@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Max Murphy</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --navy: #0a192f;
+            --light-navy: #112240;
+            --lightest-navy: #233554;
+            --slate: #8892b0;
+            --light-slate: #a8b2d1;
+            --lightest-slate: #ccd6f6;
+            --white: #e6f1ff;
+            --green: #64ffda;
+            --font-sans: 'Inter', 'San Francisco', 'SF Pro Text', -apple-system, system-ui, sans-serif;
+            --font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--navy);
+            color: var(--slate);
+            font-family: var(--font-sans);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        h1, h2, h3 { color: var(--lightest-slate); }
+        
+        .accent {
+            font-family: var(--font-mono);
+            color: var(--green);
+            font-size: 0.9rem;
+        }
+
+        .container {
+            display: flex;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 50px;
+        }
+
+        header {
+            width: 40%;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding-right: 50px;
+        }
+
+        header h1 {
+            font-size: clamp(40px, 5vw, 60px);
+            margin: 0 0 10px 0; /* Reduced margin */
+            color: var(--lightest-slate);
+        }
+
+        .profile-pic {
+            width: 100%;
+            max-width: 300px;
+            border-radius: 10px;
+            margin-bottom: 20px; /* Reduced margin to bring text closer */
+            box-shadow: 0 10px 30px -15px rgba(2,12,27,0.7);
+        }
+
+        .nav-tabs {
+            display: flex;
+            flex-direction: column;
+            gap: 15px; /* Reduced gap between tabs */
+        }
+
+        .nav-tabs a {
+            text-decoration: none;
+            color: var(--slate);
+            font-size: 0.8rem;
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: color 0.25s ease;
+        }
+
+        .nav-tabs a::before {
+            content: "";
+            display: block;
+            width: 30px;
+            height: 1px;
+            background-color: var(--slate);
+            transition: width 0.25s ease, background-color 0.25s ease;
+        }
+
+        .nav-tabs a:hover {
+            color: var(--green);
+        }
+
+        .nav-tabs a:hover::before {
+            width: 60px;
+            background-color: var(--green);
+        }
+
+        main {
+            width: 60%;
+            padding: 100px 0;
+        }
+
+        section {
+            margin-bottom: 100px;
+        }
+
+        .section-heading {
+            display: flex;
+            align-items: center;
+            margin-bottom: 40px;
+            font-size: 1.5rem;
+        }
+
+        .section-heading::after {
+            content: "";
+            display: block;
+            height: 1px;
+            width: 300px;
+            background-color: var(--lightest-navy);
+            margin-left: 20px;
+        }
+
+        .card {
+            padding: 25px;
+            background-color: transparent;
+            border-radius: 4px;
+            transition: background-color 0.25s ease, transform 0.25s ease;
+            margin-bottom: 20px;
+            border: 1px solid transparent;
+        }
+
+        .card:hover {
+            background-color: var(--light-navy);
+            border-color: var(--lightest-navy);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px -15px rgba(2,12,27,0.7);
+        }
+
+        .card h3 {
+            margin: 0 0 5px 0;
+            font-size: 1.2rem;
+            color: var(--lightest-slate);
+        }
+
+        .card-date {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--slate);
+            margin-bottom: 15px;
+        }
+
+        ul.tech-list {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(140px, 200px));
+            padding: 0;
+            margin: 20px 0 0 0;
+            overflow: hidden;
+            list-style: none;
+        }
+
+        ul.tech-list li {
+            position: relative;
+            margin-bottom: 10px;
+            padding-left: 20px;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+        }
+
+        ul.tech-list li::before {
+            content: "▹";
+            position: absolute;
+            left: 0;
+            color: var(--green);
+        }
+
+        #map {
+            height: 300px;
+            width: 100%;
+            margin-top: 20px;
+            border-radius: 4px;
+            border: 1px solid var(--lightest-navy);
+            z-index: 1;
+        }
+
+        .leaflet-container { background: var(--navy); }
+        .leaflet-tile { filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3); }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .gallery-grid img {
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+            transition: transform 0.25s ease;
+            box-shadow: 0 10px 30px -15px rgba(2,12,27,0.7);
+        }
+
+        .gallery-grid img:hover {
+            transform: translateY(-5px);
+        }
+
+        /* Contact Section Styles */
+        .contact-info {
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            margin-bottom: 30px;
+        }
+
+        .contact-info a {
+            display: block;
+            text-decoration: none;
+            color: var(--slate);
+            margin-bottom: 10px;
+            transition: color 0.25s ease;
+        }
+
+        .contact-info a:hover {
+            color: var(--green);
+        }
+
+        .social-links {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .social-links a {
+            color: var(--slate);
+            transition: color 0.25s ease, transform 0.25s ease;
+            display: inline-block;
+        }
+
+        .social-links a:hover {
+            color: var(--green);
+            transform: translateY(-3px);
+        }
+
+        .social-links svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+
+        .resume-btn {
+            color: var(--green);
+            background-color: transparent;
+            border: 1px solid var(--green);
+            border-radius: 4px;
+            padding: 0.75rem 1.25rem;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.25s ease;
+        }
+
+        .resume-btn:hover {
+            background-color: rgba(100, 255, 218, 0.1);
+        }
+
+        .strava-link-btn {
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 20px;
+            border: 1px solid var(--green);
+            padding: 10px 15px;
+            border-radius: 4px;
+            transition: all 0.25s ease;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+        }
+
+        .strava-link-btn:hover {
+            background-color: rgba(100, 255, 218, 0.1);
+            color: var(--green);
+        }
+
+        .github-link-btn {
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 20px;
+            border: 1px solid var(--green);
+            padding: 10px 15px;
+            border-radius: 4px;
+            transition: all 0.25s ease;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+        }
+
+        .github-link-btn:hover {
+            background-color: rgba(100, 255, 218, 0.1);
+            color: var(--green);
+        }
+
+
+        @media (max-width: 768px) {
+            .container { flex-direction: column; padding: 0 25px; }
+            header { width: 100%; position: relative; height: auto; padding: 50px 0; }
+            main { width: 100%; padding: 0; }
+            .section-heading::after { width: 100%; }
+            .gallery-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        
+        <header>
+            <h1>Max Murphy</h1>
+            <img src="me.jpeg" alt="Max Murphy" class="profile-pic">
+            
+            <nav class="nav-tabs">
+                <a href="#about">About</a>
+                <a href="#education">Education</a>
+                <a href="#projects">Projects</a>
+                <a href="#strava">Latest Run</a>
+                <a href="#gallery">Gallery</a>
+                <a href="#contact">Contact</a>
+            </nav>
+        </header>
+
+        <main>
+            <section id="about">
+                <h2 class="section-heading"><span class="accent">01.</span> About Me</h2>
+                <p>
+                    I am fundamentally driven by a curiosity for how systems work and a desire to optimize them. Whether I am breaking down a mechanical engineering problem, analyzing a complex dataset, or pacing a 10k race, I approach challenges with the same analytical mindset and quiet persistence.
+                </p>
+                <p>
+                    For me, the discipline of elite distance running and the rigor of applied physics are two sides of the same coin. Both require long-term dedication, precise metric tracking, and the ability to adapt to variables in real-time.
+                </p>
+                <ul class="tech-list">
+                    <li>Data-Driven Optimization</li>
+                    <li>Business Strategy</li>
+                    <li>Endurance Cycling</li>
+                    <li>Golf & Basketball</li>
+                </ul>
+            </section>
+
+            <section id="education">
+                <h2 class="section-heading"><span class="accent">02.</span> Education</h2>
+                <div class="card">
+                    <h3>Pleasant Valley High School <span class="accent">@ Bettendorf</span></h3>
+                    <div class="card-date">2016 — 2020</div>
+                    <ul class="tech-list" style="grid-template-columns: 1fr;">
+                        <li>National Honors Society</li>
+                        <li>Cross-Country Individual State Champion</li>
+                        <li>Iowa Gatorade XC Player of the Year</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>University of Iowa <span class="accent">@ Iowa City</span></h3>
+                    <div class="card-date">2020 — 2024</div>
+                    <ul class="tech-list" style="grid-template-columns: 1fr;">
+                        <li>BSE in Mechanical Engineering with a Minor in Mathematics</li>
+                        <li>3-time NCAA Division 1 Mens Track All Academic Athlete</li>
+                        <li>1500m, 5000m, & 6k XC School Records</li>
+                        <li>Big Ten 5000 and 10,000 Outdoor Track Runner-Up</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>University of North Carolina <span class="accent">@ Chapel Hill</span></h3>
+                    <div class="card-date">2024 — 2026</div>
+                    <ul class="tech-list" style="grid-template-columns: 1fr;">
+                        <li>Masters in Applied Professional Studies</li>
+                        <li>Concentration in Business and Applied Sciences</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="projects">
+                <h2 class="section-heading"><span class="accent">03.</span> Projects</h2>
+                <div class="card">
+                    <h3>S&P 500 Quantitative Equity Screener</h3>
+                    <ul class="tech-list" style="grid-template-columns: 1fr;">
+                        <li>Engineered Python system and uploaded over 250,000 data points with 5 years of cost and 6 quarters of fundamentals into SQL environment.</li>
+                        <li>Developed SQL model to isolate equities with revenue growth over 10%, PE ratio in bottom half of sector, and below 200 week moving average.</li>
+                        <li>Located fourteen potential undervalued equities.</li>
+                        <a href="https://github.com/maxgermany16/SP500-Quantitative-Screener" target="_blank" class="github-link-btn accent">View Project on GitHub ↗</a>
+                    </ul>
+                </div>
+                </section>
+
+            <section id="strava">
+                <h2 class="section-heading"><span class="accent">04.</span> Latest Run</h2>
+                <div class="card" id="run-card">
+                    <p class="accent" id="run-type">Syncing activity...</p>
+                    <h3 id="run-name">Connecting to Strava</h3>
+                    <div class="tech-list" style="grid-template-columns: repeat(3, 1fr); margin-top: 15px;">
+                        <div><span class="accent">Distance:</span> <span id="run-dist">--</span></div>
+                        <div><span class="accent">Pace:</span> <span id="run-pace">--</span></div>
+                        <div><span class="accent">Time:</span> <span id="run-time">--</span></div>
+                    </div>
+                    <div id="map"></div>
+                    <a href="https://www.strava.com/athletes/37791432" target="_blank" class="strava-link-btn accent">View Profile on Strava ↗</a>
+                </div>
+            </section>
+
+            <section id="gallery">
+                <h2 class="section-heading"><span class="accent">05.</span> Gallery</h2>
+                <div class="gallery-grid">
+                    <img src="10k.jpeg" alt="10k Race">
+                    <img src="1500.jpeg" alt="1500m Race">
+                    <img src="ghost.jpeg" alt="Ghost">
+                    <img src="xcnats.jpeg" alt="Cross Country Nationals">
+                    <img src="BigTen2023.jpeg" alt="Big Ten 2023">
+                    <img src="indoors2022.jpeg" alt="Indoors 2022">
+                </div>
+            </section>
+
+            <section id="contact">
+                <h2 class="section-heading"><span class="accent">06.</span> Contact</h2>
+                
+                <div class="contact-info">
+                    <a href="mailto:maxgermany16@hotmail.com">maxgermany16@hotmail.com</a>
+                    <a href="tel:+15639400507">563-940-0507</a>
+                </div>
+
+                <div class="social-links">
+                    <a href="https://www.instagram.com/maxmurphy.16/" target="_blank" aria-label="Instagram">
+                        <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                    </a>
+                    <a href="https://x.com/MaxMurphy_16" target="_blank" aria-label="Twitter">
+                        <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                    </a>
+                    <a href="http://www.linkedin.com/in/maxmurphy16" target="_blank" aria-label="LinkedIn">
+                        <svg viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                    </a>
+                </div>
+
+                <a href="Max Murphy Resume 2026.pdf" target="_blank" class="resume-btn">View Full Resume</a>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const clientId = "212334";
+        const clientSecret = "67174778c92a0431dbd9b12596aff42d3745c553";
+        const refreshToken = "dfaceb4359b41d92d2e8b917ef1f594ba3873d99";
+
+        function decodePolyline(encoded) {
+            let points = [];
+            let index = 0, len = encoded.length;
+            let lat = 0, lng = 0;
+            while (index < len) {
+                let b, shift = 0, result = 0;
+                do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+                let dlat = ((result & 1) ? ~(result >> 1) : (result >> 1)); lat += dlat;
+                shift = 0; result = 0;
+                do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+                let dlng = ((result & 1) ? ~(result >> 1) : (result >> 1)); lng += dlng;
+                points.push([lat / 1e5, lng / 1e5]);
+            }
+            return points;
+        }
+
+        async function getStravaData() {
+            try {
+                const authResponse = await fetch('https://www.strava.com/oauth/token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        client_id: clientId,
+                        client_secret: clientSecret,
+                        refresh_token: refreshToken,
+                        grant_type: 'refresh_token'
+                    })
+                });
+                const authData = await authResponse.json();
+                const accessToken = authData.access_token;
+
+                const activityResponse = await fetch(`https://www.strava.com/api/v3/athlete/activities?per_page=1`, {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+                const activities = await activityResponse.json();
+                const latestRun = activities[0];
+
+                if (latestRun) {
+                    const distance = (latestRun.distance * 0.000621371).toFixed(2);
+                    const totalSeconds = latestRun.moving_time;
+                    const minutes = Math.floor((totalSeconds / distance) / 60);
+                    const seconds = Math.floor((totalSeconds / distance) % 60).toString().padStart(2, '0');
+                    
+                    document.getElementById('run-name').innerText = latestRun.name;
+                    document.getElementById('run-type').innerText = latestRun.type;
+                    document.getElementById('run-dist').innerText = `${distance} mi`;
+                    document.getElementById('run-pace').innerText = `${minutes}:${seconds} /mi`;
+                    
+                    const durationMins = Math.floor(totalSeconds / 60);
+                    const durationSecs = (totalSeconds % 60).toString().padStart(2, '0');
+                    document.getElementById('run-time').innerText = `${durationMins}:${durationSecs}`;
+
+                    if (latestRun.map && latestRun.map.summary_polyline) {
+                        const coordinates = decodePolyline(latestRun.map.summary_polyline);
+                        const map = L.map('map', { zoomControl: false, dragging: false, scrollWheelZoom: false }).setView(coordinates[0], 13);
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                        const polyline = L.polyline(coordinates, { color: '#64ffda', weight: 4 }).addTo(map);
+                        map.fitBounds(polyline.getBounds());
+                    } else {
+                        document.getElementById('map').style.display = 'none';
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+        getStravaData();
+    </script>
+</body>
+</html>
